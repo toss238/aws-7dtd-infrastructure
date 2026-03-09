@@ -1,0 +1,54 @@
+version: "2"
+services:
+  7dtdserver:
+    image: vinanrra/7dtd-server
+    container_name: 7dtdserver
+    environment:
+      - LINUXGSM_VERSION=v25.2.0
+      - START_MODE=1
+      - VERSION=stable
+      - PUID=1000
+      - PGID=1000
+      - TimeZone=Asia/Tokyo
+      - TEST_ALERT=NO
+      - UPDATE_MODS=NO
+      - MODS_URLS=""
+      - ALLOC_FIXES=NO
+      - ALLOC_FIXES_UPDATE=NO
+      - UNDEAD_LEGACY=NO
+      #      - UNDEAD_LEGACY_VERSION=stable
+      #      - UNDEAD_LEGACY_UPDATE=NO
+      - DARKNESS_FALLS=NO
+      #      - DARKNESS_FALLS_UPDATE=NO
+      #      - DARKNESS_FALLS_URL=False
+      - CPM=NO
+      #      - CPM_UPDATE=NO
+      - BEPINEX=NO
+      #      - BEPINEX_UPDATE=NO
+      - BACKUP=NO
+      #      - BACKUP_HOUR=5
+      #      - BACKUP_MAX=7
+      - MONITOR=NO
+
+    volumes:
+      - ./data/saves:/home/sdtdserver/.local/share/7DaysToDie/
+      - ./data/lgsm-config:/home/sdtdserver/lgsm/config-lgsm/sdtdserver
+      - ./data/serverfiles:/home/sdtdserver/serverfiles/
+      - ./data/log:/home/sdtdserver/log/
+      - ./data/backups:/home/sdtdserver/lgsm/backup/
+
+    ports:
+      - 26900:26900/tcp
+      - 26900:26900/udp
+      - 26901:26901/udp
+      - 26902:26902/udp
+    #      - 8080:8080/tcp
+    #      - 8081:8081/tcp
+    #      - 8082:8082/tcp
+
+    ulimits:
+      nofile:
+        soft: "10240"
+        hard: "10240"
+
+    restart: unless-stopped

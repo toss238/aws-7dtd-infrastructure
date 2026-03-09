@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ProjectName:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: '/home-lab/dev/common/project-name'
+  
+  GameName:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: '/home-lab/dev/common/game-name/7dtd'
+
+  Env:
+    Type: String
+    Default: 'dev'
+
+  VpcCidr:
+    Type: String
+    Default: '10.0.0.0/16'
+
+  PublicSubnetCidr:
+    Type: String
+    Default: '10.0.1.0/24'
+
+  PrivateSubnetCidr:
+    Type: String
+    Default: '10.0.101.0/24'
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags: [{ Key: Name, Value: !Sub "${ProjectName}-${Env}-vpc" }]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: [{ Key: Name, Value: !Sub "${ProjectName}-${Env}-igw" }]
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetCidr
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: !Sub "${ProjectName}-${Env}-public-subnet" }]
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags: [{ Key: Name, Value: !Sub "${ProjectName}-${Env}-public-rt" }]
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnetCidr
+      Tags: [{ Key: Name, Value: !Sub "${GameName}-${Env}-private-subnet" }]
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags: [{ Key: Name, Value: !Sub "${GameName}-${Env}-private-rt" }]
+
+  PrivateSubnetAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+    Export: { Name: !Sub "${ProjectName}-${Env}-VpcId" }
+  PublicSubnetId:
+    Value: !Ref PublicSubnet
+    Export: { Name: !Sub "${ProjectName}-${Env}-PublicSubnetId" }
+  PrivateSubnetId:
+    Value: !Ref PrivateSubnet
+    Export: { Name: !Sub "${GameName}-${Env}-PrivateSubnetId" }
+  PrivateRouteTableId:
+    Value: !Ref PrivateRouteTable
+    Export: { Name: !Sub "${GameName}-${Env}-PrivateRouteTableId" }

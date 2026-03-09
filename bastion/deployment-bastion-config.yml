@@ -1,0 +1,3 @@
+template-file-path: env/dev/bastion/bastion.yml
+parameters: {}
+tags: {}

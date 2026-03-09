@@ -1,0 +1,3 @@
+template-file-path: env/dev/game-server/7dtd-server.yml
+parameters: {}
+tags: {}

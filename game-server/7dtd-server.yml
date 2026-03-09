@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ProjectName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/home-lab/dev/common/project-name"
+  GameName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/home-lab/dev/common/game-name/7dtd"
+  Env:
+    Type: String
+    Default: "dev"
+  KeyName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Description: SSH KeyPair name
+    Default: "/home-lab/dev/bastion/key-name"
+  GameServerInstanceType:
+    Type: String
+    Default: t3.medium
+  GameServerPrivateIp:
+    Type: String
+    Default: 10.0.101.10
+  PublicSubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+
+Resources:
+  GameServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Game Server Private SG
+      VpcId: !ImportValue
+        Fn::Sub: ${ProjectName}-${Env}-VpcId
+      SecurityGroupIngress:
+      - IpProtocol: udp
+        FromPort: 26900
+        ToPort: 26903
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp 
+        FromPort: 26900
+        ToPort: 26900
+        CidrIp: 0.0.0.0/0
+
+  GameServerLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${GameName}-${Env}-LaunchTemplate"
+      LaunchTemplateData:
+        InstanceType: !Ref GameServerInstanceType
+        ImageId: "{{resolve:ssm:/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id}}"
+        KeyName: !Ref KeyName
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            SpotInstanceType: persistent
+            InstanceInterruptionBehavior: stop
+            MaxPrice: "0.054"
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: 30
+              VolumeType: gp3
+              DeleteOnTermination: false
+        NetworkInterfaces:
+          - DeviceIndex: 0
+            SubnetId: !ImportValue 
+              Fn::Sub: "${GameName}-${Env}-PrivateSubnetId"
+            Groups:
+              - !Ref GameServerSG
+            PrivateIpAddress: !Ref GameServerPrivateIp
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -euxo pipefail
+            dd if=/dev/zero of=/swapfile bs=1M count=4096
+            chmod 600 /swapfile
+            mkswap /swapfile
+            swapon /swapfile
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab
+            apt-get update -y
+            apt-get upgrade -y
+            apt-get install -y docker.io docker-compose-v2
+            systemctl enable --now docker
+            usermod -aG docker ubuntu
+
+  GameServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref GameServerLaunchTemplate
+        Version: !GetAtt GameServerLaunchTemplate.LatestVersionNumber
+      Tags:
+        - Key: Name
+          Value: !Sub "${GameName}-${Env}-server"
