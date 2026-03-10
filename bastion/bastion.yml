@@ -43,7 +43,7 @@ Resources:
           CidrIp: 0.0.0.0/0
         - IpProtocol: udp
           FromPort: 26900
-          ToPort: 26902
+          ToPort: 26903
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
@@ -73,7 +73,7 @@ Resources:
             IFACE=$(ip route | grep default | awk '{print $5}')
             iptables -t nat -A POSTROUTING -o $IFACE -j MASQUERADE
             iptables -t nat -A PREROUTING -p tcp --dport 26900 -j DNAT --to-destination ${GameServerPrivateIp}:26900
-            iptables -t nat -A PREROUTING -p udp --dport 26900:26902 -j DNAT --to-destination ${GameServerPrivateIp}:26900-26902
+            iptables -t nat -A PREROUTING -p udp --dport 26900:26903 -j DNAT --to-destination ${GameServerPrivateIp}:26900-26902
 
   PrivateRoute:
     Type: AWS::EC2::Route
